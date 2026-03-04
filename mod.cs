@@ -2,6 +2,13 @@ using Terraria;
 using TerrariaModder.Core;
 using TerrariaModder.Core.Logging;
 
+using System;
+using System.Collections.Generic;
+using Terraria.ID;
+using Terraria.UI;
+using Microsoft.Xna.Framework;
+using TerrariaModder.Core.Events;
+
 namespace AutoTorch
 {
     public class Mod : IMod
@@ -15,11 +22,8 @@ namespace AutoTorch
         private ModContext _context;
 
         private bool _enabled;
+        private bool _autoPlaceEnabled;
         private bool _showMessages;
-        private bool _enableExtendedHotbar;
-
-        // Ruler
-        private static bool _rulerActive = false;
 
         // Item restoration state
         private static bool _autoRevertSelectedItem = false;
@@ -45,11 +49,12 @@ namespace AutoTorch
         {
             _log = context.Logger;
             _context = context;
+            _autoPlaceEnabled = true;
 
             LoadConfig();
 
             // Register our keybind
-            context.RegisterKeybind("toggle-placement", "Toggle Auto Torch Placement", "Toggle automatic torch placement on/off", "OemTilde", OnAutoTorch);
+            context.RegisterKeybind("toggle-placement", "Toggle Auto Torch Placement", "Toggle automatic torch placement on/off", "OemTilde", toggleAutoPlace);
 
             if (!_enabled)
             {
@@ -57,7 +62,17 @@ namespace AutoTorch
                 return;
             }
 
+            // Subscribe to post-update for item restoration
+            FrameEvents.OnPostUpdate += OnPostUpdate;
+
             _log.Info("Auto Torch initialized");
+        }
+
+        private void toggleAutoPlace()
+        {
+            _autoPlaceEnabled = !_autoPlaceEnabled;
+            string status = _autoPlaceEnabled ? "enabled" : "disabled";
+            ShowMessage($"Auto torch placement {status}", 255, 255, 0);
         }
 
         private void ShowMessage(string message, byte r = 255, byte g = 255, byte b = 0)
@@ -91,11 +106,73 @@ namespace AutoTorch
             LoadConfig();
         }
 
-        #region Auto Torch
+        private bool SelectItem(Player player, int index)
+        {
+            // Use selectedItemState.Select() to change selected item
+            try
+            {
+                player.selectedItemState.Select(index);
+                int verify = player.selectedItem;
+                if (verify == index)
+                    return true;
+            }
+            catch
+            {
+                // Selection failed
+            }
+            return false;
+        }
 
-        private void OnAutoTorch()
+        private void SwapInventorySlots(Item[] inventory, int slotA, int slotB)
+        {
+            if (inventory == null) return;
+            Item temp = inventory[slotA];
+            inventory[slotA] = inventory[slotB];
+            inventory[slotB] = temp;
+        }
+
+        private void OnPostUpdate()
+        {
+
+            if (!_autoRevertSelectedItem) return;
+
+            try
+            {
+                Player player = Main.player[Main.myPlayer];
+                if (player == null) return;
+
+                int itemAnimation = player.itemAnimation;
+                bool itemTimeIsZero = player.ItemTimeIsZero;
+                int reuseDelay = player.reuseDelay;
+
+                if (itemAnimation == 0 && itemTimeIsZero && reuseDelay == 0)
+                {
+                    if (_originalSelectedItem >= 0)
+                    {
+                        if (_usedSelectMethod)
+                        {
+                            // Restore using SelectItem since that's what we used to change
+                            SelectItem(player, _originalSelectedItem);
+                        }
+                        else if (_swappedSlot >= 0)
+                        {
+                            // Restore by swapping back
+                            SwapInventorySlots(player.inventory, _originalSelectedItem, _swappedSlot);
+                        }
+                    }
+                    _autoRevertSelectedItem = false;
+                    _originalSelectedItem = -1;
+                    _swappedSlot = -1;
+                    _usedSelectMethod = false;
+                }
+            }
+            catch { } // Silently fail item restoration - not critical
+        }
+
+        private void AutoPlaceTorch()
         {
             if (!_enabled) return;
+            if (!_autoPlaceEnabled) return;
             if (_placingTorch) return;
             _placingTorch = true;
 
@@ -141,7 +218,7 @@ namespace AutoTorch
 
                 // Select the torch item directly (like HelpfulHotkeys does)
                 int originalSelected = player.selectedItem;
-                bool needRestore = (originalSelected != torchSlot);
+                bool needRestore = originalSelected != torchSlot;
 
                 if (needRestore)
                 {
@@ -256,7 +333,5 @@ namespace AutoTorch
                 _placingTorch = false;
             }
         }
-
-        #endregion
     }
 }
