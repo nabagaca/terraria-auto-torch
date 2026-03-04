@@ -1,0 +1,27 @@
+{
+  "id": "auto-torch",
+  "name": "Auto Torch",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "description": "Automatically places torches in dark areas",
+  "entry_dll": "auto-torch.dll",
+  "icon": "icon.png",
+
+  "config_schema": {
+    "brightnessLevelTrigger": {
+      "type": "int",
+      "default": 50,
+      "label": "Brightness Percentage Trigger",
+      "description": "The brightness percentage below which torches are placed (0-100)"
+    }
+  },
+
+  "keybinds": [
+    {
+      "id": "toggle-placement",
+      "label": "Toggle Auto Torch Placement",
+      "description": "Toggle automatic torch placement on/off",
+      "default": "G"
+    }
+  ]
+}
