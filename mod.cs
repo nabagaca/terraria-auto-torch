@@ -27,8 +27,14 @@ namespace AutoTorch
         private bool _showDebugMessages;
         private int _brightnessLevelTrigger;
         private float _brightnessThreshold;
+        private bool _subscribedPostUpdate;
         private ulong _nextAutoPlaceTick;
         private const ulong AutoPlaceCooldownTicks = 30;
+        // ITU-R BT.709 relative luminance weights for RGB channels.
+        private const float LuminanceWeightRed = 0.2126f;
+        private const float LuminanceWeightGreen = 0.7152f;
+        private const float LuminanceWeightBlue = 0.0722f;
+        private const float MaxColorChannelValue = 255f;
 
         private static bool _placingTorch = false;
 
@@ -53,7 +59,8 @@ namespace AutoTorch
         {
             _log = context.Logger;
             _context = context;
-            _autoPlaceEnabled = true;
+            // I did have this enabled in an earlier version of the mod, but I found it tended to place a torch immediately on world load for some reason.
+            _autoPlaceEnabled = false;
 
             LoadConfig();
 
@@ -66,17 +73,34 @@ namespace AutoTorch
                 return;
             }
 
-            // Subscribe to post-update for item restoration
-            FrameEvents.OnPostUpdate += OnPostUpdate;
+            UpdateFrameSubscription();
 
             _log.Info("Auto Torch initialized");
         }
 
         private void toggleAutoPlace()
         {
+            if (!_enabled) return;
             _autoPlaceEnabled = !_autoPlaceEnabled;
             string status = _autoPlaceEnabled ? "enabled" : "disabled";
             ShowMessage($"Auto torch placement {status}", 255, 255, 0);
+        }
+
+        private void UpdateFrameSubscription()
+        {
+            if (_enabled)
+            {
+                if (!_subscribedPostUpdate)
+                {
+                    FrameEvents.OnPostUpdate += OnPostUpdate;
+                    _subscribedPostUpdate = true;
+                }
+            }
+            else if (_subscribedPostUpdate)
+            {
+                FrameEvents.OnPostUpdate -= OnPostUpdate;
+                _subscribedPostUpdate = false;
+            }
         }
 
         private void ShowMessage(string message, byte r = 255, byte g = 255, byte b = 0)
@@ -111,7 +135,11 @@ namespace AutoTorch
 
         public void Unload()
         {
-            FrameEvents.OnPostUpdate -= OnPostUpdate;
+            if (_subscribedPostUpdate)
+            {
+                FrameEvents.OnPostUpdate -= OnPostUpdate;
+                _subscribedPostUpdate = false;
+            }
             _placingTorch = false;
             _log.Info("Auto Torch unloaded");
         }
@@ -119,6 +147,7 @@ namespace AutoTorch
         public void OnConfigChanged()
         {
             LoadConfig();
+            UpdateFrameSubscription();
         }
 
         private void OnPostUpdate()
@@ -151,7 +180,9 @@ namespace AutoTorch
 
             // Relative luminance, normalized from 0.0 to 1.0.
             float brightness =
-                (0.2126f * lightColor.R + 0.7152f * lightColor.G + 0.0722f * lightColor.B) / 255f;
+                (LuminanceWeightRed * lightColor.R
+                + LuminanceWeightGreen * lightColor.G
+                + LuminanceWeightBlue * lightColor.B) / MaxColorChannelValue;
 
             if (brightness <= _brightnessThreshold)
             {

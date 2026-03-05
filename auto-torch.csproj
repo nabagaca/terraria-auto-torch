@@ -8,6 +8,10 @@
     <OutputPath>..\..\build\plugins\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <EnableTerrariaModderDeploy Condition="'$(EnableTerrariaModderDeploy)' == ''">true</EnableTerrariaModderDeploy>
+    <TerrariaInstallDir Condition="'$(TerrariaInstallDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Terraria</TerrariaInstallDir>
+    <TerrariaModderDeployRoot Condition="'$(TerrariaModderDeployRoot)' == ''">$(TerrariaInstallDir)\TerrariaModder</TerrariaModderDeployRoot>
+    <TerrariaModId Condition="'$(TerrariaModId)' == ''">auto-torch</TerrariaModId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -38,4 +42,23 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="DeployModToTerrariaModsFolder"
+          AfterTargets="Build"
+          Condition="'$(EnableTerrariaModderDeploy)' == 'true'
+                    and Exists('$(TargetDir)$(AssemblyName).dll')
+                    and Exists('$(MSBuildProjectDirectory)\manifest.json')
+                    and Exists('$(TerrariaModderDeployRoot)')">
+    <PropertyGroup>
+      <_ModDeployDir>$(TerrariaModderDeployRoot)\mods\$(TerrariaModId)</_ModDeployDir>
+    </PropertyGroup>
+
+    <MakeDir Directories="$(_ModDeployDir)" />
+    <Copy SourceFiles="$(TargetDir)$(AssemblyName).dll"
+          DestinationFiles="$(_ModDeployDir)\$(AssemblyName).dll"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(MSBuildProjectDirectory)\manifest.json"
+          DestinationFiles="$(_ModDeployDir)\manifest.json"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
