@@ -27,14 +27,19 @@ namespace AutoTorch
         private bool _showDebugMessages;
         private int _brightnessLevelTrigger;
         private float _brightnessThreshold;
+        private int _brightnessCheckCooldownTicks;
+        private int _nearbyTorchPenaltyRadiusTiles;
+        private float _nearbyTorchScorePenalty;
         private bool _subscribedPostUpdate;
-        private ulong _nextAutoPlaceTick;
-        private const ulong AutoPlaceCooldownTicks = 30;
+        private ulong _nextBrightnessCheckTick;
+        private const int DefaultBrightnessCheckCooldownTicks = 30;
         // ITU-R BT.709 relative luminance weights for RGB channels.
         private const float LuminanceWeightRed = 0.2126f;
         private const float LuminanceWeightGreen = 0.7152f;
         private const float LuminanceWeightBlue = 0.0722f;
         private const float MaxColorChannelValue = 255f;
+        private const int DefaultNearbyTorchPenaltyRadiusTiles = 4;
+        private const float DefaultNearbyTorchScorePenalty = 1000f;
 
         private static bool _placingTorch = false;
 
@@ -46,6 +51,12 @@ namespace AutoTorch
             _brightnessLevelTrigger = _context.Config.Get("brightnessLevelTrigger", 50);
             _brightnessLevelTrigger = Math.Max(0, Math.Min(100, _brightnessLevelTrigger));
             _brightnessThreshold = _brightnessLevelTrigger / 100f;
+            _brightnessCheckCooldownTicks = _context.Config.Get("brightnessCheckCooldownTicks", DefaultBrightnessCheckCooldownTicks);
+            _brightnessCheckCooldownTicks = Math.Max(0, Math.Min(600, _brightnessCheckCooldownTicks));
+            _nearbyTorchPenaltyRadiusTiles = _context.Config.Get("nearbyTorchPenaltyRadiusTiles", DefaultNearbyTorchPenaltyRadiusTiles);
+            _nearbyTorchPenaltyRadiusTiles = Math.Max(0, Math.Min(20, _nearbyTorchPenaltyRadiusTiles));
+            _nearbyTorchScorePenalty = _context.Config.Get("nearbyTorchScorePenalty", (int)DefaultNearbyTorchScorePenalty);
+            _nearbyTorchScorePenalty = Math.Max(0f, Math.Min(10000f, _nearbyTorchScorePenalty));
 
             // Enable debug logging if configured
             bool debugLogging = _context.Config.Get("debugLogging", false);
@@ -172,7 +183,8 @@ namespace AutoTorch
             if (_placingTorch) return;
 
             ulong currentTick = Main.GameUpdateCount;
-            if (currentTick < _nextAutoPlaceTick) return;
+            if (currentTick < _nextBrightnessCheckTick) return;
+            _nextBrightnessCheckTick = currentTick + (ulong)_brightnessCheckCooldownTicks;
 
             int tileX = (int)(player.Center.X / 16f);
             int tileY = (int)(player.Center.Y / 16f);
@@ -186,9 +198,28 @@ namespace AutoTorch
 
             if (brightness <= _brightnessThreshold)
             {
-                _nextAutoPlaceTick = currentTick + AutoPlaceCooldownTicks;
                 AutoPlaceTorch();
             }
+        }
+
+        private bool HasNearbyTorch(int tileX, int tileY, bool[] torchSet, int radiusTiles)
+        {
+            for (int x = tileX - radiusTiles; x <= tileX + radiusTiles; x++)
+            {
+                for (int y = tileY - radiusTiles; y <= tileY + radiusTiles; y++)
+                {
+                    if (!WorldGen.InWorld(x, y, 1)) continue;
+                    if (x == tileX && y == tileY) continue;
+
+                    Tile nearbyTile = Main.tile[x, y];
+                    if (nearbyTile == null || !nearbyTile.active()) continue;
+
+                    int tileType = nearbyTile.type;
+                    if (tileType >= 0 && tileType < torchSet.Length && torchSet[tileType])
+                        return true;
+                }
+            }
+            return false;
         }
 
         private void AutoPlaceTorch()
@@ -254,17 +285,8 @@ namespace AutoTorch
                 int tileRangeY = Math.Min(Player.tileRangeY, 50);
                 int blockRange = player.blockRange;
 
-                // Build list of positions sorted by distance from mouse
-                Vector2 mouseWorld = Main.MouseWorld;
-                float mouseX = mouseWorld.X;
-                float mouseY = mouseWorld.Y;
-                // If mouse is 0,0, use player center
-                if (mouseX == 0 && mouseY == 0)
-                {
-                    mouseX = pos.X + width / 2f;
-                    mouseY = pos.Y + height / 2f;
-                }
-
+                // Build list of positions sorted by score:
+                // closer to player center is better, nearby existing torches are penalized.
                 var targets = new List<Tuple<float, int, int>>();
                 int minX = -tileRangeX - blockRange + (int)(pos.X / 16f) + 1;
                 int maxX = tileRangeX + blockRange - 1 + (int)((pos.X + width) / 16f);
@@ -275,8 +297,16 @@ namespace AutoTorch
                 {
                     for (int k = minY; k <= maxY; k++)
                     {
-                        float dist = (float)Math.Sqrt((mouseX - j * 16f) * (mouseX - j * 16f) + (mouseY - k * 16f) * (mouseY - k * 16f));
-                        targets.Add(new Tuple<float, int, int>(dist, j, k));
+                        if (!WorldGen.InWorld(j, k, 1)) continue;
+
+                        float dx = centerX - j;
+                        float dy = centerY - k;
+                        float score = (float)Math.Sqrt(dx * dx + dy * dy);
+
+                        if (HasNearbyTorch(j, k, torchSet, _nearbyTorchPenaltyRadiusTiles))
+                            score += _nearbyTorchScorePenalty;
+
+                        targets.Add(new Tuple<float, int, int>(score, j, k));
                     }
                 }
                 targets.Sort((a, b) => a.Item1.CompareTo(b.Item1));

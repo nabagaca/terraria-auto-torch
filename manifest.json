@@ -30,6 +30,24 @@
             "default": 50,
             "label": "Brightness Percentage Trigger",
             "description": "The brightness percentage below which torches are placed (0-100)"
+        },
+        "brightnessCheckCooldownTicks": {
+            "type": "int",
+            "default": 30,
+            "label": "Brightness Check Cooldown (Ticks)",
+            "description": "How often to check brightness. 60 ticks is about 1 second."
+        },
+        "nearbyTorchPenaltyRadiusTiles": {
+            "type": "int",
+            "default": 4,
+            "label": "Nearby Torch Penalty Radius",
+            "description": "Radius in tiles used to detect nearby torches when scoring placement."
+        },
+        "nearbyTorchScorePenalty": {
+            "type": "int",
+            "default": 1000,
+            "label": "Nearby Torch Penalty Strength",
+            "description": "How strongly to avoid candidate spots near other torches."
         }
     },
     "keybinds": [
