@@ -24,6 +24,7 @@ namespace AutoTorch
         private bool _enabled;
         private bool _autoPlaceEnabled;
         private bool _showMessages;
+        private bool _showDebugMessages;
         private int _brightnessLevelTrigger;
         private float _brightnessThreshold;
         private ulong _nextAutoPlaceTick;
@@ -35,6 +36,7 @@ namespace AutoTorch
         {
             _enabled = _context.Config.Get<bool>("enabled");
             _showMessages = _context.Config.Get<bool>("showMessages");
+            _showDebugMessages = _context.Config.Get("showDebugMessages", false);
             _brightnessLevelTrigger = _context.Config.Get("brightnessLevelTrigger", 50);
             _brightnessLevelTrigger = Math.Max(0, Math.Min(100, _brightnessLevelTrigger));
             _brightnessThreshold = _brightnessLevelTrigger / 100f;
@@ -83,6 +85,16 @@ namespace AutoTorch
             try
             {
                 Main.NewText($"[Auto Torch] {message}", r, g, b);
+            }
+            catch { }
+        }
+
+        private void ShowDebugMessage(string message, byte r = 180, byte g = 180, byte b = 180)
+        {
+            if (!_showDebugMessages) return;
+            try
+            {
+                Main.NewText($"[Auto Torch:Debug] {message}", r, g, b);
             }
             catch { }
         }
@@ -191,7 +203,7 @@ namespace AutoTorch
 
                 if (torchSlot == -1 || torchItem == null)
                 {
-                    ShowMessage("No torches in inventory!", 255, 255, 0);
+                    ShowDebugMessage("No torches in inventory");
                     return;
                 }
 
@@ -280,7 +292,7 @@ namespace AutoTorch
                 }
 
                 if (!placeSuccess)
-                    ShowMessage("No valid spot for torch", 255, 255, 0);
+                    ShowDebugMessage("No valid spot for torch");
             }
             catch (Exception ex)
             {

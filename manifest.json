@@ -19,6 +19,12 @@
             "label": "Show Messages",
             "description": "Display chat notifications when using auto-torch."
         },
+        "showDebugMessages": {
+            "type": "bool",
+            "default": false,
+            "label": "Show Debug Messages",
+            "description": "Show debug-only auto-torch messages such as placement failures."
+        },
         "brightnessLevelTrigger": {
             "type": "int",
             "default": 50,
