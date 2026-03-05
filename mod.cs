@@ -24,18 +24,20 @@ namespace AutoTorch
         private bool _enabled;
         private bool _autoPlaceEnabled;
         private bool _showMessages;
+        private int _brightnessLevelTrigger;
+        private float _brightnessThreshold;
+        private ulong _nextAutoPlaceTick;
+        private const ulong AutoPlaceCooldownTicks = 30;
 
-        // Item restoration state
-        private static bool _autoRevertSelectedItem = false;
-        private static int _originalSelectedItem = -1;
-        private static int _swappedSlot = -1;
         private static bool _placingTorch = false;
-        private static bool _usedSelectMethod = false; // true = used SelectItem, false = used swap
 
         private void LoadConfig()
         {
             _enabled = _context.Config.Get<bool>("enabled");
             _showMessages = _context.Config.Get<bool>("showMessages");
+            _brightnessLevelTrigger = _context.Config.Get("brightnessLevelTrigger", 50);
+            _brightnessLevelTrigger = Math.Max(0, Math.Min(100, _brightnessLevelTrigger));
+            _brightnessThreshold = _brightnessLevelTrigger / 100f;
 
             // Enable debug logging if configured
             bool debugLogging = _context.Config.Get("debugLogging", false);
@@ -97,6 +99,7 @@ namespace AutoTorch
 
         public void Unload()
         {
+            FrameEvents.OnPostUpdate -= OnPostUpdate;
             _placingTorch = false;
             _log.Info("Auto Torch unloaded");
         }
@@ -106,67 +109,43 @@ namespace AutoTorch
             LoadConfig();
         }
 
-        private bool SelectItem(Player player, int index)
-        {
-            // Use selectedItemState.Select() to change selected item
-            try
-            {
-                player.selectedItemState.Select(index);
-                int verify = player.selectedItem;
-                if (verify == index)
-                    return true;
-            }
-            catch
-            {
-                // Selection failed
-            }
-            return false;
-        }
-
-        private void SwapInventorySlots(Item[] inventory, int slotA, int slotB)
-        {
-            if (inventory == null) return;
-            Item temp = inventory[slotA];
-            inventory[slotA] = inventory[slotB];
-            inventory[slotB] = temp;
-        }
-
         private void OnPostUpdate()
         {
-
-            if (!_autoRevertSelectedItem) return;
-
             try
             {
-                Player player = Main.player[Main.myPlayer];
-                if (player == null) return;
-
-                int itemAnimation = player.itemAnimation;
-                bool itemTimeIsZero = player.ItemTimeIsZero;
-                int reuseDelay = player.reuseDelay;
-
-                if (itemAnimation == 0 && itemTimeIsZero && reuseDelay == 0)
+                if (_enabled && _autoPlaceEnabled && !Main.gameMenu)
                 {
-                    if (_originalSelectedItem >= 0)
-                    {
-                        if (_usedSelectMethod)
-                        {
-                            // Restore using SelectItem since that's what we used to change
-                            SelectItem(player, _originalSelectedItem);
-                        }
-                        else if (_swappedSlot >= 0)
-                        {
-                            // Restore by swapping back
-                            SwapInventorySlots(player.inventory, _originalSelectedItem, _swappedSlot);
-                        }
-                    }
-                    _autoRevertSelectedItem = false;
-                    _originalSelectedItem = -1;
-                    _swappedSlot = -1;
-                    _usedSelectMethod = false;
+                    Player player = Main.player[Main.myPlayer];
+                    if (player != null)
+                        TryAutoPlaceFromBrightness(player);
                 }
             }
-            catch { } // Silently fail item restoration - not critical
+            catch { }
+        }
+
+        private void TryAutoPlaceFromBrightness(Player player)
+        {
+            if (player.dead || player.ghost) return;
+            if (Main.playerInventory || Main.mapFullscreen) return;
+            if (player.itemAnimation > 0 || !player.ItemTimeIsZero || player.reuseDelay > 0) return;
+            if (_placingTorch) return;
+
+            ulong currentTick = Main.GameUpdateCount;
+            if (currentTick < _nextAutoPlaceTick) return;
+
+            int tileX = (int)(player.Center.X / 16f);
+            int tileY = (int)(player.Center.Y / 16f);
+            Color lightColor = Lighting.GetColor(tileX, tileY);
+
+            // Relative luminance, normalized from 0.0 to 1.0.
+            float brightness =
+                (0.2126f * lightColor.R + 0.7152f * lightColor.G + 0.0722f * lightColor.B) / 255f;
+
+            if (brightness <= _brightnessThreshold)
+            {
+                _nextAutoPlaceTick = currentTick + AutoPlaceCooldownTicks;
+                AutoPlaceTorch();
+            }
         }
 
         private void AutoPlaceTorch()
@@ -214,26 +193,6 @@ namespace AutoTorch
                 {
                     ShowMessage("No torches in inventory!", 255, 255, 0);
                     return;
-                }
-
-                // Select the torch item directly (like HelpfulHotkeys does)
-                int originalSelected = player.selectedItem;
-                bool needRestore = originalSelected != torchSlot;
-
-                if (needRestore)
-                {
-                    // Try to set selectedItem via selectedItemState.Select
-                    bool selected = SelectItem(player, torchSlot);
-                    if (selected)
-                        _usedSelectMethod = true;
-                    else
-                    {
-                        SwapInventorySlots(inventory, originalSelected, torchSlot);
-                        _usedSelectMethod = false;
-                    }
-                    _autoRevertSelectedItem = true;
-                    _originalSelectedItem = originalSelected;
-                    _swappedSlot = torchSlot;
                 }
 
                 // Get player position
