@@ -269,6 +269,13 @@ namespace AutoTorch
                     return;
                 }
 
+                // Respect vanilla biome torch swap: if enabled, convert a regular torch
+                // (tile type 4, style 0) to the biome-appropriate torch style.
+                if (player.UsingBiomeTorches && torchTileType == 4 && torchPlaceStyle == 0)
+                {
+                    player.BiomeTorchPlaceStyle(ref torchTileType, ref torchPlaceStyle);
+                }
+
                 // Get player position
                 Vector2 pos = player.position;
                 int width = player.width;
