@@ -16,7 +16,7 @@ namespace AutoTorch
         // These must match manifest.json
         public string Id => "auto-torch";
         public string Name => "Auto Torch";
-        public string Version => "0.1.0";
+        public string Version => "0.2.0";
 
         private ILogger _log;
         private ModContext _context;
