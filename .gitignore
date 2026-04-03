@@ -1,3 +1,6 @@
 obj
 
 *.sln
+
+# Build artifacts
+artifacts/
