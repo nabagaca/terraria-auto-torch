@@ -2,16 +2,9 @@
     "id": "auto-torch",
     "name": "Auto Torch",
     "version": "0.3.0",
+    "framework_version": ">=0.4.0",
     "author": "nabagaca",
     "description": "Automatically places torches in dark areas",
     "entry_dll": "auto-torch.dll",
     "icon": "icon.png",
-    "keybinds": [
-        {
-            "id": "toggle-placement",
-            "label": "Toggle Auto Torch Placement",
-            "description": "Toggle automatic torch placement on/off",
-            "default": "G"
-        }
-    ]
 }
