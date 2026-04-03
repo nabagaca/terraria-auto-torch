@@ -1,55 +1,11 @@
 {
     "id": "auto-torch",
     "name": "Auto Torch",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "author": "nabagaca",
     "description": "Automatically places torches in dark areas",
     "entry_dll": "auto-torch.dll",
     "icon": "icon.png",
-    "config_schema": {
-        "enabled": {
-            "type": "bool",
-            "default": true,
-            "label": "Enabled",
-            "description": "Master toggle for auto-torch."
-        },
-        "showMessages": {
-            "type": "bool",
-            "default": false,
-            "label": "Show Messages",
-            "description": "Display chat notifications when using auto-torch."
-        },
-        "showDebugMessages": {
-            "type": "bool",
-            "default": false,
-            "label": "Show Debug Messages",
-            "description": "Show debug-only auto-torch messages such as placement failures."
-        },
-        "brightnessLevelTrigger": {
-            "type": "int",
-            "default": 50,
-            "label": "Brightness Percentage Trigger",
-            "description": "The brightness percentage below which torches are placed (0-100)"
-        },
-        "brightnessCheckCooldownTicks": {
-            "type": "int",
-            "default": 30,
-            "label": "Brightness Check Cooldown (Ticks)",
-            "description": "How often to check brightness. 60 ticks is about 1 second."
-        },
-        "nearbyTorchPenaltyRadiusTiles": {
-            "type": "int",
-            "default": 4,
-            "label": "Nearby Torch Penalty Radius",
-            "description": "Radius in tiles used to detect nearby torches when scoring placement."
-        },
-        "nearbyTorchScorePenalty": {
-            "type": "int",
-            "default": 1000,
-            "label": "Nearby Torch Penalty Strength",
-            "description": "How strongly to avoid candidate spots near other torches."
-        }
-    },
     "keybinds": [
         {
             "id": "toggle-placement",

@@ -1,5 +1,6 @@
 using Terraria;
 using TerrariaModder.Core;
+using TerrariaModder.Core.Config;
 using TerrariaModder.Core.Logging;
 
 using System;
@@ -11,7 +12,7 @@ using TerrariaModder.Core.Events;
 
 namespace AutoTorch
 {
-    public class Mod : IMod
+    public class Mod : IMod, IModLifecycle
     {
         // These must match manifest.json
         public string Id => "auto-torch";
@@ -20,6 +21,7 @@ namespace AutoTorch
 
         private ILogger _log;
         private ModContext _context;
+        private AutoTorchConfig _config;
 
         private bool _enabled;
         private bool _autoPlaceEnabled;
@@ -45,21 +47,16 @@ namespace AutoTorch
 
         private void LoadConfig()
         {
-            _enabled = _context.Config.Get<bool>("enabled");
-            _showMessages = _context.Config.Get<bool>("showMessages");
-            _showDebugMessages = _context.Config.Get("showDebugMessages", false);
-            _brightnessLevelTrigger = _context.Config.Get("brightnessLevelTrigger", 50);
-            _brightnessLevelTrigger = Math.Max(0, Math.Min(100, _brightnessLevelTrigger));
+            _enabled = _config?.Enabled ?? true;
+            _showMessages = _config?.ShowMessages ?? false;
+            _showDebugMessages = _config?.ShowDebugMessages ?? false;
+            _brightnessLevelTrigger = Math.Max(0, Math.Min(100, _config?.BrightnessLevelTrigger ?? 50));
             _brightnessThreshold = _brightnessLevelTrigger / 100f;
-            _brightnessCheckCooldownTicks = _context.Config.Get("brightnessCheckCooldownTicks", DefaultBrightnessCheckCooldownTicks);
-            _brightnessCheckCooldownTicks = Math.Max(0, Math.Min(600, _brightnessCheckCooldownTicks));
-            _nearbyTorchPenaltyRadiusTiles = _context.Config.Get("nearbyTorchPenaltyRadiusTiles", DefaultNearbyTorchPenaltyRadiusTiles);
-            _nearbyTorchPenaltyRadiusTiles = Math.Max(0, Math.Min(20, _nearbyTorchPenaltyRadiusTiles));
-            _nearbyTorchScorePenalty = _context.Config.Get("nearbyTorchScorePenalty", (int)DefaultNearbyTorchScorePenalty);
-            _nearbyTorchScorePenalty = Math.Max(0f, Math.Min(10000f, _nearbyTorchScorePenalty));
+            _brightnessCheckCooldownTicks = Math.Max(0, Math.Min(600, _config?.BrightnessCheckCooldownTicks ?? DefaultBrightnessCheckCooldownTicks));
+            _nearbyTorchPenaltyRadiusTiles = Math.Max(0, Math.Min(20, _config?.NearbyTorchPenaltyRadiusTiles ?? DefaultNearbyTorchPenaltyRadiusTiles));
+            _nearbyTorchScorePenalty = Math.Max(0f, Math.Min(10000f, _config?.NearbyTorchScorePenalty ?? DefaultNearbyTorchScorePenalty));
 
-            // Enable debug logging if configured
-            bool debugLogging = _context.Config.Get("debugLogging", false);
+            bool debugLogging = _config?.DebugLogging ?? false;
             if (debugLogging)
             {
                 _log.MinLevel = LogLevel.Debug;
@@ -70,6 +67,7 @@ namespace AutoTorch
         {
             _log = context.Logger;
             _context = context;
+            _config = context.GetConfig<AutoTorchConfig>();
             // I did have this enabled in an earlier version of the mod, but I found it tended to place a torch immediately on world load for some reason.
             _autoPlaceEnabled = false;
 
@@ -133,6 +131,8 @@ namespace AutoTorch
             }
             catch { }
         }
+
+        public void OnContentReady(ModContext context) { }
 
         public void OnWorldLoad()
         {
