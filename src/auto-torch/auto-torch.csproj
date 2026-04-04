@@ -5,28 +5,17 @@
     <RootNamespace>auto-torch</RootNamespace>
     <OutputType>Library</OutputType>
     <LangVersion>latest</LangVersion>
-    <OutputPath>..\..\build\plugins\</OutputPath>
+    <OutputPath>..\..\artifacts\bin\</OutputPath>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
     <EnableTerrariaModderDeploy Condition="'$(EnableTerrariaModderDeploy)' == ''">true</EnableTerrariaModderDeploy>
     <TerrariaInstallDir Condition="'$(TerrariaInstallDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Terraria</TerrariaInstallDir>
     <TerrariaModderDeployRoot Condition="'$(TerrariaModderDeployRoot)' == ''">$(TerrariaInstallDir)\TerrariaModder</TerrariaModderDeployRoot>
     <TerrariaModId Condition="'$(TerrariaModId)' == ''">auto-torch</TerrariaModId>
-
-    <!-- zip output option: set /p:CreateZipPackage=true to create a zip after build -->
-    <CreateZipPackage Condition="'$(CreateZipPackage)' == ''">false</CreateZipPackage>
-
-    <!-- Read manifest.json (if present) and extract version to tag the zip filename -->
-    <_ManifestExists Condition="Exists('$(MSBuildProjectDirectory)\manifest.json')">true</_ManifestExists>
-    <_ManifestText Condition="'$(_ManifestExists)' == 'true'">$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\manifest.json'))</_ManifestText>
-    <ModVersion Condition="'$(_ManifestExists)' == 'true'">$([System.Text.RegularExpressions.Regex]::Match($(_ManifestText), '"version"\s*:\s*"([^\"]+)"').Groups[1].Value)</ModVersion>
-    <ModVersion Condition="'$(_ManifestExists)' != 'true'">unknown</ModVersion>
-
-    <ZipPackageOutputPath Condition="'$(ZipPackageOutputPath)' == ''">$(MSBuildProjectDirectory)\artifacts\$(AssemblyName)-$(ModVersion).zip</ZipPackageOutputPath>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\terraria-modder\src\Core\TerrariaModder.Core.csproj">
+    <ProjectReference Include="..\..\..\terraria-modder\src\Core\TerrariaModder.Core.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
@@ -44,10 +33,6 @@
       <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <!-- <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework.Graphics\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.Graphics.dll</HintPath>
-      <Private>false</Private>
-    </Reference> -->
     <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
       <HintPath>C:\Windows\Microsoft.NET\assembly\GAC_32\Microsoft.Xna.Framework.Game\v4.0_4.0.0.0__842cf8be1de50553\Microsoft.Xna.Framework.Game.dll</HintPath>
       <Private>false</Private>
@@ -71,14 +56,5 @@
     <Copy SourceFiles="$(MSBuildProjectDirectory)\manifest.json"
           DestinationFiles="$(_ModDeployDir)\manifest.json"
           SkipUnchangedFiles="true" />
-  </Target>
-
-  <Target Name="PackageMod"
-          AfterTargets="Build"
-          Condition="'$(CreateZipPackage)' == 'true' and Exists('$(TargetDir)$(AssemblyName).dll') and Exists('$(MSBuildProjectDirectory)\manifest.json')">
-    <Message Text="Packing mod and manifest into $(ZipPackageOutputPath)" Importance="High" />
-    <MakeDir Directories="$(OutputPath)" />
-    <MakeDir Directories="$(MSBuildProjectDirectory)\artifacts" />
-    <Exec Command="powershell -NoProfile -NonInteractive -Command &quot;Remove-Item -LiteralPath '$(ZipPackageOutputPath)' -ErrorAction SilentlyContinue; Compress-Archive -Path '$(TargetDir)$(AssemblyName).dll','$(MSBuildProjectDirectory)\manifest.json' -DestinationPath '$(ZipPackageOutputPath)' -Force&quot;" />
   </Target>
 </Project>
