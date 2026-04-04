@@ -4,3 +4,6 @@ obj
 
 # Build artifacts
 artifacts/
+
+# local env file
+.env
