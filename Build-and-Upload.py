@@ -211,7 +211,10 @@ def upload_to_nexus(file_path: Path, version: str, api_key: str, description_ove
         "PUT",
         presigned_url,
         raw_body=file_bytes,
-        extra_headers={"Content-Type": "application/octet-stream"},
+        extra_headers={
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": f'attachment; filename="{file_name}"',
+        },
     )
     print("File uploaded successfully")
 
@@ -350,12 +353,13 @@ def main() -> int:
     artifacts_dir = project_root / "artifacts"
 
     try:
-        load_env_file(env_file)
+        if (not args.skip_upload or not args.skip_github) and env_file.exists():
+            load_env_file(env_file)
         api_key = os.getenv("nexus_api_key", "")
-        if not api_key:
-            raise ScriptError("nexus_api_key not found in .env file")
+        if not args.skip_upload and not api_key:
+            raise ScriptError("nexus_api_key is required for Nexus upload (environment or .env file)")
 
-        if not FILE_GROUP_ID:
+        if not args.skip_upload and not FILE_GROUP_ID:
             raise ScriptError(
                 "FILE_GROUP_ID is not configured. Set FILE_GROUP_ID near the top of this script."
             )
@@ -367,19 +371,16 @@ def main() -> int:
             run_build(csproj_file, args.build_configuration)
 
         assembly_name = get_assembly_name(csproj_file)
-        try:
-            zip_file = find_zip(artifacts_dir, assembly_name, version)
-        except ScriptError:
-            if not args.skip_build:
-                # build just ran; attempt to create the zip from build outputs
-                print("Built zip not found — creating zip package cross-platform...")
-                create_zip_package(project_root, artifacts_dir, assembly_name, version)
+        if not args.skip_build:
+            # Always replace the archive after building; an existing same-version
+            # ZIP may contain an older DLL from a previous build.
+            zip_file = create_zip_package(project_root, artifacts_dir, assembly_name, version)
+        else:
+            try:
                 zip_file = find_zip(artifacts_dir, assembly_name, version)
-            else:
-                # If build was skipped, still attempt to create zip (user may have built earlier)
+            except ScriptError:
                 print("Built zip not found — creating zip package from existing build outputs...")
-                create_zip_package(project_root, artifacts_dir, assembly_name, version)
-                zip_file = find_zip(artifacts_dir, assembly_name, version)
+                zip_file = create_zip_package(project_root, artifacts_dir, assembly_name, version)
         print(f"Found built package: {zip_file.name}\n")
 
         if not args.skip_upload:

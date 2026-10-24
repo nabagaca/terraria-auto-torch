@@ -17,7 +17,7 @@ namespace AutoTorch
         // These must match manifest.json
         public string Id => "auto-torch";
         public string Name => "Auto Torch";
-        public string Version => "0.4.0";
+        public string Version => "0.4.1";
 
         private ILogger _log;
         private ModContext _context;
@@ -163,16 +163,12 @@ namespace AutoTorch
 
         private void OnPostUpdate()
         {
-            try
+            if (_enabled && _autoPlaceEnabled && !Main.gameMenu)
             {
-                if (_enabled && _autoPlaceEnabled && !Main.gameMenu)
-                {
-                    Player player = Main.player[Main.myPlayer];
-                    if (player != null)
-                        TryAutoPlaceFromBrightness(player);
-                }
+                Player player = Main.player[Main.myPlayer];
+                if (player != null)
+                    TryAutoPlaceFromBrightness(player);
             }
-            catch { }
         }
 
         private void TryAutoPlaceFromBrightness(Player player)
@@ -348,6 +344,15 @@ namespace AutoTorch
                                     if (torchItem.stack <= 0)
                                         torchItem.TurnToAir();
                                 }
+
+                                // WorldGen.PlaceTile changes the local world but does not
+                                // replicate the tile or consumed inventory slot in multiplayer.
+                                if (Main.netMode != 0)
+                                {
+                                    NetMessage.TrySendData(17, -1, -1, null, 1, tileX, tileY, torchTileType, torchPlaceStyle);
+                                    NetMessage.TrySendData(5, -1, -1, null, Main.myPlayer, torchSlot);
+                                }
+
                                 placeSuccess = true;
                                 break;
                             }
