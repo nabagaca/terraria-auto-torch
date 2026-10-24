@@ -114,6 +114,26 @@ class PackagingTests(unittest.TestCase):
             self.assertEqual(self.invoke("--skip-upload", "--skip-github"), 1)
         self.assertFalse(self.archive.exists())
 
+    def test_nexus_upload_sends_signed_content_disposition(self):
+        self.package()
+        responses = [
+            {"data": {"id": "test-upload", "presigned_url": "https://upload.invalid/file"}},
+            b"",
+            {},
+            {"data": {"state": "available"}},
+            {"data": {"id": "test-version"}},
+        ]
+        with mock.patch.object(self.mod, "api_request", side_effect=responses) as request:
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.mod.upload_to_nexus(self.archive, "0.4.1", "test-key", "Test release")
+        upload = request.call_args_list[1]
+        self.assertEqual(upload.args, ("PUT", "https://upload.invalid/file"))
+        self.assertEqual(upload.kwargs["raw_body"], self.archive.read_bytes())
+        self.assertEqual(upload.kwargs["extra_headers"], {
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": 'attachment; filename="auto-torch-v0.4.1.zip"',
+        })
+
 
 if __name__ == "__main__":
     unittest.main()

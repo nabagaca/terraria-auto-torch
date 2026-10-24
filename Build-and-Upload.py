@@ -211,7 +211,10 @@ def upload_to_nexus(file_path: Path, version: str, api_key: str, description_ove
         "PUT",
         presigned_url,
         raw_body=file_bytes,
-        extra_headers={"Content-Type": "application/octet-stream"},
+        extra_headers={
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": f'attachment; filename="{file_name}"',
+        },
     )
     print("File uploaded successfully")
 
