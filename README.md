@@ -25,15 +25,14 @@ This mod was spun out from the Auto Torch feature in **QuickKeys** and adapted t
 3. Copy the `auto-torch` mod folder (containing `auto-torch.dll` and `manifest.json`) into:
    `C:\Program Files (x86)\Steam\steamapps\common\Terraria\TerrariaModder\mods\`
 
-## Optional local packaging (build)
+## Optional local build
 
 From the project folder, run:
 
-- `dotnet build auto-torch.csproj /p:CreateZipPackage=true`
+- `dotnet build src/auto-torch/auto-torch.csproj -c Release`
 
-This will generate a zip at `artifacts\auto-torch-<version>.zip` containing:
-- `auto-torch.dll`
-- `manifest.json`
+The DLL is written to `artifacts/bin/auto-torch.dll`. Initialize the TerrariaModder
+submodule first; see the build documentation for setup and deployment options.
 
 ## Documentation
 

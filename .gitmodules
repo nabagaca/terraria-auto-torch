@@ -1,0 +1,4 @@
+[submodule "dependencies/terraria-modder"]
+	path = dependencies/terraria-modder
+	url = https://github.com/Inidar1/terraria-modder.git
+	branch = main

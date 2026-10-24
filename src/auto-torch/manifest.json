@@ -1,8 +1,8 @@
 {
     "id": "auto-torch",
     "name": "Auto Torch",
-    "version": "0.4.0",
-    "framework_version": ">=0.4.0",
+    "version": "0.4.1",
+    "framework_version": ">=0.4.1",
     "author": "nabagaca",
     "description": "Automatically places torches in dark areas",
     "entry_dll": "auto-torch.dll",

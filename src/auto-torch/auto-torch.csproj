@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\terraria-modder\src\Core\TerrariaModder.Core.csproj">
+    <ProjectReference Include="..\..\dependencies\terraria-modder\src\Core\TerrariaModder.Core.csproj">
       <Private>false</Private>
     </ProjectReference>
   </ItemGroup>
@@ -38,6 +38,11 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <Target Name="ValidateTerrariaModderSubmodule" BeforeTargets="PrepareForBuild">
+    <Error Condition="!Exists('$(MSBuildProjectDirectory)\..\..\dependencies\terraria-modder\src\Core\TerrariaModder.Core.csproj')"
+           Text="TerrariaModder submodule is missing. Run: git submodule update --init --recursive" />
+  </Target>
 
   <Target Name="DeployModToTerrariaModsFolder"
           AfterTargets="Build"
